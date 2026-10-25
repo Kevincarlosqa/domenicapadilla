@@ -1,0 +1,28 @@
+# Recordatorios de citas cada 15 minutos (24 h y 2 h antes).
+# El plan Hobby de Vercel solo permite crons diarios; este workflow gratuito de GitHub
+# llama al mismo endpoint protegido. Configura en GitHub → Settings → Secrets and variables → Actions:
+#   APP_URL      → https://tu-dominio.vercel.app   (sin barra final)
+#   CRON_SECRET  → el mismo valor que CRON_SECRET en Vercel
+name: Recordatorios de citas
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # GitHub puede retrasarlo unos minutos en horas de mucha carga
+  workflow_dispatch: {} # permite ejecutarlo a mano desde la pestaña Actions
+
+jobs:
+  reminders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Llamar al endpoint de recordatorios
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Faltan los secrets APP_URL o CRON_SECRET"; exit 1
+          fi
+          curl --fail-with-body --silent --show-error --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/reminders"

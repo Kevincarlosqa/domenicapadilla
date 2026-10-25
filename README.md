@@ -111,7 +111,11 @@ En **Panel → Simulador del bot** puedes probar el asistente sin WhatsApp. Sin 
 
 1. Importa el repositorio en <https://vercel.com/new>. Detecta Next.js solo, y `npm run build` ya ejecuta `prisma generate`.
 2. Carga todas las variables de `.env.example` en **Settings → Environment Variables**, incluidas `APP_URL` con tu dominio y `CRON_SECRET` con una cadena aleatoria.
-3. **Cron de recordatorios.** `vercel.json` programa `GET /api/cron/reminders` cada 15 minutos y Vercel envía `Authorization: Bearer $CRON_SECRET`. El plan Hobby solo permite crons diarios: para recordatorios de 2 h necesitas el plan **Pro**, o llamar al endpoint desde otro servicio de cron con la misma cabecera.
+3. **Cron de recordatorios.** `GET /api/cron/reminders` envía los recordatorios de 24 h y 2 h; exige `Authorization: Bearer $CRON_SECRET` y es idempotente (llamarlo de más no duplica mensajes).
+   - `vercel.json` lo programa **una vez al día** (13:00 UTC = 8:00 en Lima), que es lo máximo que permite el plan Hobby.
+   - Para que corra **cada 15 minutos** gratis, el workflow `.github/workflows/reminders.yml` (GitHub Actions) llama al mismo endpoint. En GitHub → *Settings → Secrets and variables → Actions* crea `APP_URL` (p. ej. `https://tu-app.vercel.app`) y `CRON_SECRET` (el mismo de Vercel). Puedes lanzarlo a mano desde la pestaña *Actions* para probar.
+   - Alternativa sin GitHub: [cron-job.org](https://cron-job.org), con la misma URL y la cabecera `Authorization`.
+   - Con el plan **Pro** de Vercel puedes volver a `"*/15 * * * *"` en `vercel.json` y borrar el workflow.
 4. Despliega y luego ejecuta `npm run db:deploy` contra la base de producción (desde tu máquina o en un paso de CI).
 5. Configura la URL del webhook de Meta con el dominio final.
 
