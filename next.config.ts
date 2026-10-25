@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ["@electric-sql/pglite", "pglite-prisma-adapter"],
   // Las migraciones se leen en tiempo de ejecución en modo demo.
-  outputFileTracingIncludes: { "/**": ["./prisma/migrations/**/*"] },
+  outputFileTracingIncludes: { "/**": ["./prisma/migrations/**/*", "./prisma/demo-snapshot/**/*"] },
   turbopack: {
     rules: {
       "*.css": {

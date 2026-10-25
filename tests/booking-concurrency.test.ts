@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { PrismaPGlite } from "pglite-prisma-adapter";
 import { PrismaClient } from "@/generated/prisma/client";
-import { applyMigrations } from "@/lib/demo";
+import { applyMigrations } from "@/lib/migrations";
 import { seedDatabase } from "@/lib/seed-data";
 import { getAvailability } from "@/lib/availability";
 import { BookingError, createBooking } from "@/lib/booking";

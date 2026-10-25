@@ -119,6 +119,8 @@ En **Panel → Simulador del bot** puedes probar el asistente sin WhatsApp. Sin 
 4. Despliega y luego ejecuta `npm run db:deploy` contra la base de producción (desde tu máquina o en un paso de CI).
 5. Configura la URL del webhook de Meta con el dominio final.
 
+> **Datos de la demo.** Están en el archivo `prisma/demo-snapshot/pglite.tar.gz` (incluido en el código). Sin `DATABASE_URL`, la app lo carga en ~1 s; al cargarlo corre las fechas las semanas transcurridas, así la demo siempre muestra la semana actual. Si cambias los datos de ejemplo (`src/lib/seed-data.ts`), regenera el archivo con `npm run demo:snapshot` y súbelo.
+>
 > **Modo demo en Vercel.** Si no defines `DATABASE_URL`, cada instancia serverless arranca su propia base en memoria. Sirve para una preview, pero las reservas no se comparten entre instancias. En producción usa siempre Supabase.
 
 ---
