@@ -72,7 +72,7 @@ export default async function Home() {
         <Team stylists={data.stylists} />
         <Branches branches={data.branches} />
         <ChatDemo whatsappHref={mainWhatsapp} />
-        <Testimonials items={testimonials} isDemo={!TESTIMONIALS.length} />
+        <Testimonials items={testimonials} />
         <Strands flip />
 
         <section id="reservar" aria-labelledby="reservar-title" className="mx-auto grid max-w-[1440px] grid-cols-1 gap-10 px-4 pt-12 pb-28 md:px-10 lg:grid-cols-[1fr_1.25fr] lg:gap-12 [&>*]:min-w-0">

@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { Testimonial } from "@/content/testimonials";
 
-export function Testimonials({ items, isDemo }: { items: Testimonial[]; isDemo: boolean }) {
+export function Testimonials({ items }: { items: Testimonial[] }) {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   useEffect(() => {
@@ -21,7 +21,6 @@ export function Testimonials({ items, isDemo }: { items: Testimonial[]; isDemo: 
       <h2 id="test-title" className="sr-only">
         Testimonios
       </h2>
-      {isDemo ? <p className="mb-6 inline-block rounded-full bg-[#f3f3f1] px-3 py-1 text-xs text-[#2b2b2b]">Ejemplos de diseño: reemplazar por reseñas reales en src/content/testimonials.ts</p> : null}
       <div className="relative min-h-[16rem] md:min-h-[20rem]" aria-live="polite">
         <AnimatePresence mode="wait">
           <motion.figure key={i} initial={{ opacity: 0, y: 24, filter: "blur(6px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={{ opacity: 0, y: -16, filter: "blur(6px)" }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}>
