@@ -1,0 +1,440 @@
+// Doménica Padilla — esquema de datos. Reglas en docs/business-logic.md
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  BRANCH_MANAGER
+  RECEPTION
+  STYLIST
+}
+
+enum StylistLevel {
+  JUNIOR
+  SENIOR
+  MASTER
+}
+
+enum ServiceCategory {
+  BROWS
+  LASHES
+  LIPS
+  SKIN
+  NAILS
+  HAIR
+  MAKEUP
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum BookingChannel {
+  WHATSAPP
+  WEB
+  DASHBOARD
+  PHONE
+  WALK_IN
+}
+
+enum TimeOffKind {
+  VACATION
+  SICK
+  TRAINING
+  BLOCK
+}
+
+enum WaitlistStatus {
+  WAITING
+  NOTIFIED
+  BOOKED
+  EXPIRED
+  CANCELLED
+}
+
+enum ConversationStatus {
+  BOT
+  HUMAN
+  CLOSED
+}
+
+enum MessageDirection {
+  IN
+  OUT
+}
+
+enum MessageAuthor {
+  CUSTOMER
+  BOT
+  STAFF
+  SYSTEM
+}
+
+model Branch {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  name              String
+  district          String
+  city              String
+  address           String
+  reference         String?
+  lat               Float
+  lng               Float
+  phone             String
+  timezone          String   @default("America/Lima")
+  imageUrl          String?
+  stations          Int      @default(4)
+  slotIntervalMin   Int      @default(15)
+  minLeadMinutes    Int      @default(120)
+  maxDaysAhead      Int      @default(60)
+  cancelWindowHours Int      @default(24)
+  maxActiveBookings Int      @default(3)
+  noShowWarnAt      Int      @default(2)
+  noShowBlockAt     Int      @default(3)
+  active            Boolean  @default(true)
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  hours        BranchHours[]
+  closures     BranchClosure[]
+  services     BranchService[]
+  schedules    StylistSchedule[]
+  timeOff      TimeOff[]
+  bookings     Booking[]
+  users        UserBranch[]
+  waitlist     WaitlistEntry[]
+  conversations Conversation[]
+  preferredBy  Customer[]      @relation("PreferredBranch")
+}
+
+/// Franja de apertura. Varias por día permitidas. Minutos desde medianoche local.
+model BranchHours {
+  id       String @id @default(cuid())
+  branchId String
+  weekday  Int // 0 = domingo … 6 = sábado
+  startMin Int
+  endMin   Int
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, weekday])
+}
+
+model BranchClosure {
+  id       String   @id @default(cuid())
+  branchId String
+  startsAt DateTime
+  endsAt   DateTime
+  reason   String
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, startsAt])
+}
+
+model Service {
+  id                  String          @id @default(cuid())
+  slug                String          @unique
+  name                String
+  category            ServiceCategory
+  description         String
+  durationMin         Int
+  priceCents          Int
+  priceFrom           Boolean         @default(false)
+  bufferMin           Int             @default(0)
+  processingOffsetMin Int?
+  processingMin       Int?
+  retouchAfterDays    Int?
+  requiresEvaluation  Boolean         @default(false)
+  active              Boolean         @default(true)
+  featured            Boolean         @default(false)
+  sortOrder           Int             @default(0)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  variants      ServiceVariant[]
+  branches      BranchService[]
+  stylists      StylistService[]
+  bookingItems  BookingItem[]
+}
+
+model ServiceVariant {
+  id          String  @id @default(cuid())
+  serviceId   String
+  name        String
+  durationMin Int
+  priceCents  Int
+  sortOrder   Int     @default(0)
+  service     Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  bookingItems BookingItem[]
+}
+
+model BranchService {
+  id          String  @id @default(cuid())
+  branchId    String
+  serviceId   String
+  active      Boolean @default(true)
+  priceCents  Int?
+  durationMin Int?
+  branch      Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  service     Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, serviceId])
+}
+
+model Stylist {
+  id        String       @id @default(cuid())
+  slug      String       @unique
+  name      String
+  title     String
+  level     StylistLevel @default(SENIOR)
+  bio       String?
+  photoUrl  String?
+  instagram String?
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+
+  schedules     StylistSchedule[]
+  services      StylistService[]
+  timeOff       TimeOff[]
+  bookingItems  BookingItem[]
+  user          User?
+  technicalNotes TechnicalNote[]
+  waitlist      WaitlistEntry[]
+  preferredBy   Customer[]        @relation("PreferredStylist")
+}
+
+/// Franja de trabajo de una especialista en una sede un día de la semana.
+model StylistSchedule {
+  id        String  @id @default(cuid())
+  stylistId String
+  branchId  String
+  weekday   Int
+  startMin  Int
+  endMin    Int
+  stylist   Stylist @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  branch    Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, weekday])
+  @@index([stylistId, weekday])
+}
+
+model StylistService {
+  id          String  @id @default(cuid())
+  stylistId   String
+  serviceId   String
+  durationMin Int?
+  priceCents  Int?
+  stylist     Stylist @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  service     Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([stylistId, serviceId])
+}
+
+model TimeOff {
+  id        String      @id @default(cuid())
+  stylistId String
+  branchId  String?
+  kind      TimeOffKind @default(BLOCK)
+  startsAt  DateTime
+  endsAt    DateTime
+  reason    String?
+  stylist   Stylist     @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  branch    Branch?     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([stylistId, startsAt])
+}
+
+model Customer {
+  id                 String    @id @default(cuid())
+  phone              String    @unique
+  name               String?
+  email              String?
+  birthday           DateTime?
+  preferredBranchId  String?
+  preferredStylistId String?
+  skinType           String?
+  hairType           String?
+  allergies          String?
+  notes              String?
+  tags               String[]  @default([])
+  marketingOptIn     Boolean   @default(false)
+  marketingOptInAt   DateTime?
+  noShowCount        Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  preferredBranch  Branch?         @relation("PreferredBranch", fields: [preferredBranchId], references: [id], onDelete: SetNull)
+  preferredStylist Stylist?        @relation("PreferredStylist", fields: [preferredStylistId], references: [id], onDelete: SetNull)
+  bookings         Booking[]
+  technicalNotes   TechnicalNote[]
+  waitlist         WaitlistEntry[]
+  conversations    Conversation[]
+}
+
+model TechnicalNote {
+  id         String   @id @default(cuid())
+  customerId String
+  stylistId  String?
+  title      String
+  formula    String?
+  body       String?
+  createdAt  DateTime @default(now())
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  stylist    Stylist? @relation(fields: [stylistId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
+}
+
+model Booking {
+  id                String         @id @default(cuid())
+  code              String         @unique
+  customerId        String
+  branchId          String
+  status            BookingStatus  @default(CONFIRMED)
+  channel           BookingChannel
+  startsAt          DateTime
+  endsAt            DateTime
+  totalCents        Int
+  notes             String?
+  internalNotes     String?
+  createdById       String?
+  confirmedAt       DateTime?
+  cancelledAt       DateTime?
+  cancelReason      String?
+  completedAt       DateTime?
+  reminder24hSentAt DateTime?
+  reminder2hSentAt  DateTime?
+  rescheduledFromId String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  customer  Customer      @relation(fields: [customerId], references: [id])
+  branch    Branch        @relation(fields: [branchId], references: [id])
+  createdBy User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  items     BookingItem[]
+
+  @@index([branchId, startsAt])
+  @@index([customerId, startsAt])
+  @@index([status, startsAt])
+}
+
+/// Un servicio dentro de una reserva. busyUntil incluye el buffer.
+model BookingItem {
+  id              String          @id @default(cuid())
+  bookingId       String
+  serviceId       String
+  variantId       String?
+  stylistId       String
+  position        Int
+  startsAt        DateTime
+  endsAt          DateTime
+  busyUntil       DateTime
+  processingStart DateTime?
+  processingEnd   DateTime?
+  durationMin     Int
+  priceCents      Int
+  booking         Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  service         Service         @relation(fields: [serviceId], references: [id])
+  variant         ServiceVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  stylist         Stylist         @relation(fields: [stylistId], references: [id])
+
+  @@index([stylistId, startsAt])
+}
+
+model WaitlistEntry {
+  id         String         @id @default(cuid())
+  customerId String
+  branchId   String
+  serviceIds String[]
+  stylistId  String?
+  dateFrom   DateTime
+  dateTo     DateTime
+  status     WaitlistStatus @default(WAITING)
+  notifiedAt DateTime?
+  notes      String?
+  createdAt  DateTime       @default(now())
+  customer   Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  branch     Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  stylist    Stylist?       @relation(fields: [stylistId], references: [id], onDelete: SetNull)
+
+  @@index([branchId, status])
+}
+
+model Conversation {
+  id             String             @id @default(cuid())
+  phone          String             @unique
+  customerId     String?
+  branchId       String?
+  status         ConversationStatus @default(BOT)
+  aiPaused       Boolean            @default(false)
+  assignedUserId String?
+  summary        String?
+  summaryUpTo    Int                @default(0)
+  unreadCount    Int                @default(0)
+  lastMessageAt  DateTime           @default(now())
+  lastInboundAt  DateTime?
+  isSimulator    Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+  customer       Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  branch         Branch?            @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  assignedUser   User?              @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  messages       Message[]
+
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id             String           @id @default(cuid())
+  conversationId String
+  direction      MessageDirection
+  author         MessageAuthor
+  type           String           @default("text")
+  body           String
+  payload        Json?
+  waMessageId    String?          @unique
+  status         String?
+  authorUserId   String?
+  createdAt      DateTime         @default(now())
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         Role
+  active       Boolean   @default(true)
+  stylistId    String?   @unique
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  stylist      Stylist?  @relation(fields: [stylistId], references: [id], onDelete: SetNull)
+  branches     UserBranch[]
+  bookings     Booking[]
+  conversations Conversation[]
+}
+
+model UserBranch {
+  userId   String
+  branchId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([userId, branchId])
+}
